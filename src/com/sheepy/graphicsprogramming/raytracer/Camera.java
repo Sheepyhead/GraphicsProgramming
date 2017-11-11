@@ -1,6 +1,7 @@
 package com.sheepy.graphicsprogramming.raytracer;
 
 import com.sun.javafx.geom.Matrix3f;
+import com.sun.xml.internal.ws.api.FeatureConstructor;
 import javafx.application.Application;
 import javafx.geometry.Point3D;
 import javafx.scene.paint.Color;
@@ -8,6 +9,8 @@ import javafx.stage.Stage;
 import javafx.util.Pair;
 
 import java.awt.*;
+import java.math.BigDecimal;
+import java.util.Date;
 
 public class Camera extends Application {
     private PixelCanvas canvas;
@@ -25,9 +28,9 @@ public class Camera extends Application {
     public void start(Stage primaryStage) throws Exception {
         position = new Point3D(3, 0, 1);
         rotation = new Matrix3f(
-                0.7071f,0,-0.7071f,
-                0,1,0,
-                0.7071f,0,0.7071f);
+                0.7071f, 0, -0.7071f,
+                0, 1, 0,
+                0.7071f, 0, 0.7071f);
 
         canvas = new PixelCanvas();
         viewPort = new ViewPort();
@@ -35,8 +38,8 @@ public class Camera extends Application {
 
         scene.addSphere(1, new Point3D(0, -1, 3), Color.RED, 500, 0.2f);
         scene.addSphere(1, new Point3D(2, 0, 4), Color.BLUE, 500, 0.3f);
-        scene.addSphere(1, new Point3D(-2, 0, 4), Color.GREEN, 10,0.4f);
-        scene.addSphere(5000, new Point3D(0, -5001, 0), Color.YELLOW, 1000,0.5f);
+        scene.addSphere(1, new Point3D(-2, 0, 4), Color.GREEN, 10, 0.4f);
+        scene.addSphere(5000, new Point3D(0, -5001, 0), Color.YELLOW, 1000, 0.5f);
 
         scene.setAmbientLight(0.2f);
 
@@ -46,13 +49,18 @@ public class Camera extends Application {
 
         canvas.start(primaryStage);
 
-        renderScene();
+        Thread t = new Thread(() -> {
+            BigDecimal start = new BigDecimal(System.nanoTime());
+            renderScene();
+            System.out.println("RENDER DONE IN " + (new BigDecimal(System.nanoTime()).subtract(start)).movePointLeft(6) + "ms");
+        });
+        t.start();
     }
 
     private void renderScene() {
         for (int x = -PixelCanvas.screenWidth / 2; x <= PixelCanvas.screenWidth / 2; x++) {
             for (int y = -PixelCanvas.screenHeight / 2; y <= PixelCanvas.screenHeight / 2; y++) {
-                Point3D direction = matrixVectorProduct(rotation,viewPort.canvasToViewport(new Point(x, y)));
+                Point3D direction = matrixVectorProduct(rotation, viewPort.canvasToViewport(new Point(x, y)));
                 Color color = traceRay(position, direction, 5, 1);
                 canvas.putPixel(x, y, color);
             }
@@ -81,18 +89,17 @@ public class Camera extends Application {
         Color sphereColor = ClampedColor.intensifyColor(closestSphere.getColor(), lightIntensity);
 
         // Recursion limit or non-reflective surface reached
-        if (recursionDepth <= 0 || !closestSphere.reflective())
-        {
+        if (recursionDepth <= 0 || !closestSphere.reflective()) {
             return sphereColor;
         }
 
         // Recurse again
         Point3D r = reflectRay(direction.multiply(-1), n);
-        Color reflectedColor = traceRay(p,r,recursionDepth - 1,0.001f);
+        Color reflectedColor = traceRay(p, r, recursionDepth - 1, 0.001f);
 
         return ClampedColor.addColors(
-                ClampedColor.intensifyColor(sphereColor,1-closestSphere.getReflective()),
-                ClampedColor.intensifyColor(reflectedColor,closestSphere.getReflective()));
+                ClampedColor.intensifyColor(sphereColor, 1 - closestSphere.getReflective()),
+                ClampedColor.intensifyColor(reflectedColor, closestSphere.getReflective()));
     }
 
     private float[] intersectRaySphere(Point3D origin, Point3D direction, Sphere sphere) {
@@ -138,7 +145,7 @@ public class Camera extends Application {
 
             // Specular
             if (sphere.specular()) {
-                Point3D r = reflectRay(l,n);
+                Point3D r = reflectRay(l, n);
                 double rDotV = r.dotProduct(v);
                 if (rDotV > 0) {
                     double addIntensity = light.getIntensity() * Math.pow(rDotV / (r.magnitude() * v.magnitude()), sphere.getSpecular());
@@ -164,7 +171,7 @@ public class Camera extends Application {
 
             // Specular
             if (sphere.specular()) {
-                Point3D r = reflectRay(l,n);
+                Point3D r = reflectRay(l, n);
                 double rDotV = r.dotProduct(v);
                 if (rDotV > 0) {
                     double addIntensity = light.getIntensity() * Math.pow(rDotV / (r.magnitude() * v.magnitude()), sphere.getSpecular());
@@ -195,13 +202,13 @@ public class Camera extends Application {
     }
 
     private Point3D reflectRay(Point3D r, Point3D n) {
-        return n.multiply(n.dotProduct(r) *  2d).subtract(r);
+        return n.multiply(n.dotProduct(r) * 2d).subtract(r);
     }
 
     private Point3D matrixVectorProduct(Matrix3f m, Point3D v) {
-        double x = m.m00*v.getX()+m.m01*v.getY()+m.m02*v.getZ();
-        double y = m.m10*v.getX()+m.m11*v.getY()+m.m12*v.getZ();
-        double z = m.m20*v.getX()+m.m21*v.getY()+m.m22*v.getZ();
+        double x = m.m00 * v.getX() + m.m01 * v.getY() + m.m02 * v.getZ();
+        double y = m.m10 * v.getX() + m.m11 * v.getY() + m.m12 * v.getZ();
+        double z = m.m20 * v.getX() + m.m21 * v.getY() + m.m22 * v.getZ();
 
         return new Point3D(x, y, z);
 
